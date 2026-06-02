@@ -169,20 +169,12 @@ if ai_bg:
 else:
     st.warning("ai_bg.png not found in app.py folder.")
 
-gemini_api_key = st.secrets.get("GEMINI_API_KEY", "").strip()
-if gemini_api_key:
-    try:
-        genai.configure(api_key=gemini_api_key)
-        gemini_ready = True
-    except Exception:
-        gemini_ready = False
-else:
+try:
+    gemini_api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=gemini_api_key)
+    gemini_ready = True
+except Exception:
     gemini_ready = False
-
-if not gemini_ready:
-    st.warning(
-        "Gemini API is not configured. Add GEMINI_API_KEY to `.streamlit/secrets.toml` and use the AI Board Advisor tab for high-level insights."
-    )
 
 
 def clean_number(series):
