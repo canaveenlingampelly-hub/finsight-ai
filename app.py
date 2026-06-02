@@ -243,6 +243,32 @@ def format_insight_html(text):
 
     return '<div class="cfo-insights-container">' + "".join(html_lines) + '</div>'
 
+
+def build_interactive_prompt(question, metrics, top_variance_text, top_states_text, top_products_text):
+    return f"""
+You are a senior finance advisor. Use only the data provided below and do not assume any missing financials.
+Answer the user's question clearly and provide practical recommendations if the query is about improvements, risks, or next steps.
+If the question is not related to the uploaded financial data, say: "I can only answer questions related to the uploaded financial dataset."
+
+Data Summary:
+{metrics}
+
+Top P&L Variances:
+{top_variance_text}
+
+Top Sales States:
+{top_states_text}
+
+Top Products by Sales:
+{top_products_text}
+
+Question: {question}
+
+Answer format:
+- One short paragraph or bullet list.
+- If the question asks for recommendations, include at least one practical action.
+"""
+
 st.markdown('<div class="upload-card">', unsafe_allow_html=True)
 st.markdown("### 📁 Financial Data Hub")
 st.caption("Upload Trial Balance, Sales Register and Receivable Ageing to generate executive finance insights.")
@@ -352,6 +378,19 @@ if tb_file and sales_file and recv_file:
     receivables_90 = recv_df[recv_df["Days"] >= 90]["Outstanding"].sum()
     risk_percent = (receivables_90 / total_receivables) * 100 if total_receivables else 0
 
+    top_states = (
+        sales_df.groupby("State")["Sales"].sum()
+        .reset_index()
+        .sort_values("Sales", ascending=False)
+        .head(5)
+    )
+    top_products = (
+        sales_df.groupby("Product Name")["Sales"].sum()
+        .reset_index()
+        .sort_values("Sales", ascending=False)
+        .head(5)
+    )
+
     dso = (receivable / revenue) * 365 if revenue else 0
     dio = (inventory / cogs) * 365 if cogs else 0
     dpo = (payable / cogs) * 365 if cogs else 0
@@ -372,6 +411,13 @@ if tb_file and sales_file and recv_file:
         axis=1
     )
     tb_df["Status"] = tb_df.apply(variance_status, axis=1)
+
+    top_ai_variance = tb_df[
+        tb_df["KPI Type"].isin([
+            "Revenue", "COGS", "Other Income",
+            "Other Expense", "Interest", "Depreciation", "Tax"
+        ])
+    ].sort_values("Variance Cr", key=abs, ascending=False).head(10).copy()
 
     st.markdown("### KPI Snapshot")
     s1, s2, s3, s4, s5 = st.columns(5)
@@ -430,12 +476,13 @@ if tb_file and sales_file and recv_file:
         unsafe_allow_html=True
     )
     
-    tab0, tab2, tab3, tab4, tab5 = st.tabs([
+    tab0, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "★ Executive Dashboard",
             "◈ Sales Dynamics",
             "⚖ Variance Analysis",
             "◉ Working Capital & Risk",
-            "★ AI Board Advisor"
+            "★ AI Board Advisor",
+            "✦ Interactive AI"
         ])
     
     with tab0:
@@ -841,6 +888,106 @@ if tb_file and sales_file and recv_file:
                 st.markdown(insight_html, unsafe_allow_html=True)
             else:
                 st.info("Click Generate CFO Insights to create boardroom-level commentary.")
+
+    with tab6:
+            st.header("✦ Interactive AI Q&A")
+            st.markdown("Ask questions about the uploaded financial dataset and get data-driven recommendations.")
+
+            if "interactive_question" not in st.session_state:
+                st.session_state["interactive_question"] = ""
+            if "interactive_response" not in st.session_state:
+                st.session_state["interactive_response"] = ""
+
+            user_question = st.text_area(
+                "Ask your question",
+                value=st.session_state["interactive_question"],
+                placeholder="e.g. What is the biggest cash risk? How can we improve receivables?",
+                height=140,
+                key="interactive_question"
+            )
+
+            if st.button("Ask AI", type="primary"):
+                if not user_question.strip():
+                    st.warning("Please enter a question before asking the AI.")
+                else:
+                    metrics_text = (
+                        f"Revenue Actual: {format_cr(revenue)}\n"
+                        f"Revenue Budget: {format_cr(revenue_budget)}\n"
+                        f"EBITDA: {format_cr(ebitda)}\n"
+                        f"PAT: {format_cr(pat)}\n"
+                        f"DSO: {dso:.0f} days\n"
+                        f"CCC: {ccc:.0f} days\n"
+                        f"DSCR: {dscr:.2f}x\n"
+                        f"Interest Coverage: {interest_coverage:.2f}x\n"
+                        f"Receivables: {format_cr(receivable)}\n"
+                        f"Receivables >90 days: {format_cr(receivables_90)} ({risk_percent:.0f}% risk)\n"
+                    )
+
+                    top_variance_text = "\n".join(
+                        top_ai_variance["GL Description"].astype(str)
+                        + ": "
+                        + top_ai_variance["KPI Type"].astype(str)
+                        + ", Actual Cr="
+                        + top_ai_variance["Actual Cr"].round(2).astype(str)
+                        + ", Budget Cr="
+                        + top_ai_variance["Budget Cr"].round(2).astype(str)
+                        + ", Var Cr="
+                        + top_ai_variance["Variance Cr"].round(2).astype(str)
+                        + ", Status="
+                        + top_ai_variance["Status"].astype(str)
+                    )
+
+                    top_states_text = "\n".join(
+                        top_states["State"].astype(str)
+                        + ": "
+                        + top_states["Sales"].div(10000000).round(2).astype(str)
+                        + " Cr"
+                    )
+
+                    top_products_text = "\n".join(
+                        top_products["Product Name"].astype(str)
+                        + ": "
+                        + top_products["Sales"].div(10000000).round(2).astype(str)
+                        + " Cr"
+                    )
+
+                    prompt = build_interactive_prompt(
+                        user_question,
+                        metrics_text,
+                        top_variance_text,
+                        top_states_text,
+                        top_products_text,
+                    )
+
+                    if gemini_ready:
+                        try:
+                            model = genai.GenerativeModel("gemini-2.5-flash")
+                            with st.spinner("🤖 Answering your financial question..."):
+                                response = model.generate_content(
+                                    prompt,
+                                    generation_config={
+                                        "temperature": 0.2,
+                                        "max_output_tokens": 1200,
+                                    }
+                                )
+                            st.session_state["interactive_response"] = response.text.strip()
+                        except Exception as e:
+                            st.session_state["interactive_response"] = (
+                                "Gemini API issue: "
+                                + str(e)
+                                + "\n\nPlease check your API key or try again later."
+                            )
+                    else:
+                        st.session_state["interactive_response"] = (
+                            "Gemini API is not configured. Please add GEMINI_API_KEY to Streamlit secrets. "
+                            "Until then, use the AI Board Advisor tab for high-level insights."
+                        )
+
+            if st.session_state["interactive_response"]:
+                st.markdown("### AI Answer")
+                st.markdown(st.session_state["interactive_response"])
+            else:
+                st.info("Type a question about your uploaded data and click Ask AI.")
     
 else:
     st.warning("Please upload Trial Balance, Sales Register and Receivable Ageing files.")
