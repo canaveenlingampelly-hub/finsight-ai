@@ -7,6 +7,13 @@ import re
 from pathlib import Path
 
 st.set_page_config(page_title="FinSight AI", layout="wide")
+st.markdown("""
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
 
 def get_base64_image(image_path):
     img_path = Path(image_path)
