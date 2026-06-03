@@ -292,10 +292,12 @@ st.markdown('<div class="upload-card">', unsafe_allow_html=True)
 st.markdown("### 📁 Financial Data Hub")
 st.caption("Upload Trial Balance, Sales Register and Receivable Ageing to generate executive finance insights.")
 
+BASE_DIR = Path(__file__).parent
+
 template_files = {
-    "tb": "TrialBalance.xlsx",
-    "sales": "Sales Register.xlsx",
-    "recv": "Receivable Ageing.xlsx",
+    "tb": BASE_DIR / "templates" / "TrialBalance.xlsx",
+    "sales": BASE_DIR / "templates" / "Sales Register.xlsx",
+    "recv": BASE_DIR / "templates" / "Receivable Ageing.xlsx",
 }
 
 u1, u2, u3 = st.columns(3)
