@@ -70,12 +70,27 @@ color:#0B3C75 !important;
 }
 
 button[data-baseweb="tab"] {
-background:white !important;
+background: rgba(255,255,255,0.72) !important;
+backdrop-filter: blur(12px) !important;
 border-radius:12px !important;
 font-weight:700 !important;
-font-size:14px !important;
-padding:10px 14px !important;
+font-size:13px !important;
+padding:8px 12px !important;
 margin-right:6px !important;
+color: #0B3C75 !important;
+box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08) !important;
+border: 1px solid rgba(11, 60, 117, 0.14) !important;
+}
+
+button[data-baseweb="tab"]:hover,
+button[data-baseweb="tab"]:focus {
+background: rgba(255,255,255,0.92) !important;
+box-shadow: 0 10px 28px rgba(11, 60, 117, 0.12) !important;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+background: rgba(11,60,117,0.12) !important;
+color: #0B3C75 !important;
 }
 
 .insight-box {
@@ -277,16 +292,46 @@ st.markdown('<div class="upload-card">', unsafe_allow_html=True)
 st.markdown("### 📁 Financial Data Hub")
 st.caption("Upload Trial Balance, Sales Register and Receivable Ageing to generate executive finance insights.")
 
+template_files = {
+    "tb": "TrialBalance.xlsx",
+    "sales": "Sales Register.xlsx",
+    "recv": "Receivable Ageing.xlsx",
+}
+
 u1, u2, u3 = st.columns(3)
 
 with u1:
     tb_file = st.file_uploader("Trial Balance", type=["xlsx"], key="tb")
+    if Path(template_files["tb"]).exists():
+        with open(template_files["tb"], "rb") as f:
+            st.download_button(
+                "Download TB template",
+                f.read(),
+                file_name=Path(template_files["tb"]).name,
+                key="dl_tb"
+            )
 
 with u2:
     sales_file = st.file_uploader("Sales Register", type=["xlsx"], key="sales")
+    if Path(template_files["sales"]).exists():
+        with open(template_files["sales"], "rb") as f:
+            st.download_button(
+                "Download Sales Register template",
+                f.read(),
+                file_name=Path(template_files["sales"]).name,
+                key="dl_sales"
+            )
 
 with u3:
     recv_file = st.file_uploader("Receivable Ageing", type=["xlsx"], key="recv")
+    if Path(template_files["recv"]).exists():
+        with open(template_files["recv"], "rb") as f:
+            st.download_button(
+                "Download Receivable Ageing template",
+                f.read(),
+                file_name=Path(template_files["recv"]).name,
+                key="dl_recv"
+            )
 
 st.markdown("</div>", unsafe_allow_html=True)
 
