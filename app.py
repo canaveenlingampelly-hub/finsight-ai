@@ -130,6 +130,7 @@ st.markdown("""
         </div>
         <div>
             <div style="font-size:32px;font-weight:900;color:#0B1F3A;line-height:1.2;">FinSight AI</div>
+            <div style="font-size:14px;color:#64748B;font-weight:600;letter-spacing:0.4px;margin-bottom:6px;">CA Naveen Lingampelly — Strategic Finance Advisory</div>
             <div style="font-size:16px;color:#334155;">AI-Powered Financial Intelligence for CFOs, CEOs and Business Leaders</div>
         </div>
         <div style="margin-left:auto;background:#0B3C75;color:white;padding:14px 22px;border-radius:12px;font-weight:700;">
